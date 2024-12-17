@@ -41,7 +41,7 @@ def parse_args():
     parser.add_argument(
         "--host",
         type=str,
-        default="127.0.0.1",
+        default="0.0.0.0",
         help="Host for the WebSocket server",
     )
     parser.add_argument(

@@ -2,8 +2,10 @@ import os
 
 import torch
 from transformers import pipeline
+import numpy as np
 
 from src.audio_utils import save_audio_to_file
+from src.client import Client
 
 from .asr_interface import ASRInterface
 
@@ -18,20 +20,19 @@ class WhisperASR(ASRInterface):
             device=device,
         )
 
-    async def transcribe(self, client):
-        file_path = await save_audio_to_file(
-            client.scratch_buffer, client.get_file_name()
-        )
+    async def transcribe(self, client: Client):
+        to_return = ""
 
-        if client.config["language"] is not None:
-            to_return = self.asr_pipeline(
-                file_path,
-                generate_kwargs={"language": client.config["language"]},
-            )["text"]
-        else:
-            to_return = self.asr_pipeline(file_path)["text"]
+        audio_data = np.frombuffer(client.scratch_buffer, dtype=np.int16).astype(np.float32)
+        audio_data = audio_data / 32768.0  # Normalize to [-1, 1] range
+        print(f"Audio shape: {audio_data.shape}")
+        print(f"Audio min/max: {audio_data.min()}, {audio_data.max()}")
+        print(f"Audio data length: {len(audio_data)}")
+        print(f"Pipeline config: {self.asr_pipeline.model.config}")
 
-        os.remove(file_path)
+        for item in self.asr_pipeline(audio_data):
+            print(f"Got: {item}, {type(item)}")
+            to_return += item
 
         to_return = {
             "language": "UNSUPPORTED_BY_HUGGINGFACE_WHISPER",

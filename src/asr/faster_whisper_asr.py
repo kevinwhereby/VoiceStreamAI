@@ -1,8 +1,9 @@
-import os
+import asyncio
 
 from faster_whisper import WhisperModel
-
-from src.audio_utils import save_audio_to_file
+from concurrent.futures import ProcessPoolExecutor
+import numpy as np
+import time
 
 from .asr_interface import ASRInterface
 
@@ -110,47 +111,57 @@ language_codes = {
 }
 
 
+class WhisperWorker:
+    def __init__(self, model_size):
+        from faster_whisper import WhisperModel
+
+        self.model = WhisperModel(
+            model_size,
+            device="cuda",
+            compute_type="float16",
+            num_workers=1,
+        )
+
+    def transcribe(self, buffer):
+        ndarray = np.frombuffer(buffer, dtype=np.int16)
+        segments, info = self.model.transcribe(ndarray)
+        segments = list(segments)
+        return {
+            "text": " ".join([s.text.strip() for s in segments]),
+        }
+
+
+def init_worker(model_size):
+    # This will run once per worker process
+    global worker
+    worker = WhisperWorker(model_size)
+
+
+def transcribe_worker(buffer):
+    # Uses the global worker instance initialized in init_worker
+    global worker
+    return worker.transcribe(buffer)
+
+
 class FasterWhisperASR(ASRInterface):
     def __init__(self, **kwargs):
-        model_size = kwargs.get("model_size", "large-v3")
-        # Run on GPU with FP16
-        self.asr_pipeline = WhisperModel(
-            model_size, device="cuda", compute_type="float16"
+        self.model_size = kwargs.get("model_size", "large-v3")
+        # Initialize pool with workers that already have the model loaded
+        self.process_pool = ProcessPoolExecutor(
+            max_workers=2, initializer=init_worker, initargs=(self.model_size,)
         )
 
-    async def transcribe(self, client):
-        file_path = await save_audio_to_file(
-            client.scratch_buffer, client.get_file_name()
-        )
+    async def transcribe(self, buffer):
+        loop = asyncio.get_running_loop()
 
-        language = (
-            None
-            if client.config["language"] is None
-            else language_codes.get(client.config["language"].lower())
-        )
-        segments, info = self.asr_pipeline.transcribe(
-            file_path, word_timestamps=True, language=language
-        )
+        try:
+            result = await loop.run_in_executor(
+                self.process_pool, transcribe_worker, buffer
+            )
+            return result
+        except Exception as e:
+            print(f"Transcription error: {e}")
+            return {"text": ""}
 
-        segments = list(segments)  # The transcription will actually run here.
-        os.remove(file_path)
-
-        flattened_words = [
-            word for segment in segments for word in segment.words
-        ]
-
-        to_return = {
-            "language": info.language,
-            "language_probability": info.language_probability,
-            "text": " ".join([s.text.strip() for s in segments]),
-            "words": [
-                {
-                    "word": w.word,
-                    "start": w.start,
-                    "end": w.end,
-                    "probability": w.probability,
-                }
-                for w in flattened_words
-            ],
-        }
-        return to_return
+    async def cleanup(self):
+        self.process_pool.shutdown(wait=True)

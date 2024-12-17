@@ -1,10 +1,17 @@
 import os
 from os import remove
+import io
+import time
+import asyncio
 
 from pyannote.audio import Model
 from pyannote.audio.pipelines import VoiceActivityDetection
+import torch
+import numpy as np
+
 
 from src.audio_utils import save_audio_to_file
+from src.client import Client
 
 from .vad_interface import VADInterface
 
@@ -44,18 +51,19 @@ class PyannoteVAD(VADInterface):
                 "min_duration_off": 0.3,
             },
         )
-        self.model = Model.from_pretrained(
-            model_name, use_auth_token=auth_token
-        )
+        self.model = Model.from_pretrained(model_name, use_auth_token=auth_token)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        pipeline = self.model.to(device)
         self.vad_pipeline = VoiceActivityDetection(segmentation=self.model)
         self.vad_pipeline.instantiate(pyannote_args)
 
-    async def detect_activity(self, client):
-        audio_file_path = await save_audio_to_file(
-            client.scratch_buffer, client.get_file_name()
-        )
-        vad_results = self.vad_pipeline(audio_file_path)
-        remove(audio_file_path)
+    async def detect_activity(self, buffer):
+        data = np.frombuffer(buffer, dtype=np.int16).astype(np.float32) / 32767.0
+        waveform = torch.from_numpy(data).reshape((1, -1))
+        audio_data = {"waveform": waveform, "sample_rate": 16000}
+
+        vad_results = await asyncio.to_thread(self.vad_pipeline, audio_data)
+
         vad_segments = []
         if len(vad_results) > 0:
             vad_segments = [
