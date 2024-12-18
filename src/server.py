@@ -2,6 +2,7 @@ import json
 import logging
 import ssl
 import uuid
+import http
 
 import websockets
 
@@ -67,6 +68,9 @@ class Server:
             client.process_audio(
                 websocket, self.vad_pipeline, self.asr_pipeline
             )
+    async def health_check(self, path, request_headers):
+        if path == "/health/":
+            return http.HTTPStatus.OK, [], b"OK\n"
 
     async def handle_websocket(self, websocket):
         client_id = str(uuid.uuid4())
@@ -83,33 +87,10 @@ class Server:
             del self.connected_clients[client_id]
 
     def start(self):
-        if self.certfile:
-            # Create an SSL context to enforce encrypted connections
-            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-
-            # Load your server's certificate and private key
-            # Replace 'your_cert_path.pem' and 'your_key_path.pem' with the
-            # actual paths to your files
-            ssl_context.load_cert_chain(
-                certfile=self.certfile, keyfile=self.keyfile
-            )
-
-            print(
-                f"WebSocket server ready to accept secure connections on "
-                f"{self.host}:{self.port}"
-            )
-
-            # Pass the SSL context to the serve function along with the host
-            # and port. Ensure the secure flag is set to True if using a secure
-            # WebSocket protocol (wss://)
-            return websockets.serve(
-                self.handle_websocket, self.host, self.port, ssl=ssl_context
-            )
-        else:
-            print(
-                f"WebSocket server ready to accept secure connections on "
-                f"{self.host}:{self.port}"
-            )
-            return websockets.serve(
-                self.handle_websocket, self.host, self.port
-            )
+        print(
+            f"WebSocket server ready to accept secure connections on "
+            f"{self.host}:{self.port}"
+        )
+        return websockets.serve(
+            self.handle_websocket, self.host, self.port, process_request=self.health_check
+        )
