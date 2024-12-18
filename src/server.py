@@ -69,7 +69,7 @@ class Server:
                 websocket, self.vad_pipeline, self.asr_pipeline
             )
     async def health_check(self, path, request_headers):
-        if path == "/health/":
+        if path == "/health":
             print(f"Healthcheck OK")
             return http.HTTPStatus.OK, [], b"OK\n"
 
