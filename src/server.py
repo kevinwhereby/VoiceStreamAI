@@ -32,7 +32,7 @@ class Server:
         self,
         vad_pipeline,
         asr_pipeline,
-        host="localhost",
+        host="0.0.0.0",
         port=8765,
         sampling_rate=16000,
         samples_width=2,
