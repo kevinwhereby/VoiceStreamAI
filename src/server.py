@@ -70,6 +70,7 @@ class Server:
             )
     async def health_check(self, path, request_headers):
         if path == "/health/":
+            print(f"Healthcheck OK")
             return http.HTTPStatus.OK, [], b"OK\n"
 
     async def handle_websocket(self, websocket):
