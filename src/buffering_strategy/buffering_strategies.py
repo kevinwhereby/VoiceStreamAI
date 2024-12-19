@@ -123,7 +123,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
                 end = time.time()
                 transcription["processing_time"] = end - start
                 json_transcription = json.dumps(transcription)
-                print(f"transcribed {len(transcription["text"])} words in {transcription["processing_time"]} seconds")
+                print(f"transcribed {transcription["text"]} words in {transcription["processing_time"]} seconds")
                 await websocket.send(json_transcription)
             self.client.scratch_buffer.clear()
             self.client.increment_file_counter()
