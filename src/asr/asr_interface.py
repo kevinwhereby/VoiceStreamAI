@@ -1,5 +1,5 @@
 class ASRInterface:
-    async def transcribe(self):
+    async def transcribe(self, buffer):
         """
         Transcribe the given audio data.
 

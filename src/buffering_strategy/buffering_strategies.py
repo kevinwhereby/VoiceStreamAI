@@ -139,8 +139,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             self.client.scratch_buffer.clear()
             return
 
-        while vad_results[-1]["end"] > last_segment_should_end_before:
-            print(f"Still talking")
+        while len(vad_results) == 0 or vad_results[-1]["end"] > last_segment_should_end_before:
             await asyncio.sleep(1)
             self.client.scratch_buffer += self.client.buffer
             self.client.buffer.clear()
@@ -155,5 +154,5 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             end = time.time()
             transcription["processing_time"] = end - start
             json_transcription = json.dumps(transcription)
-            print(f"transcribed {transcription["text"]} words in {transcription["processing_time"]} seconds")
+            print(f"transcribed {len(transcription["text"].split(" "))} words in {transcription["processing_time"]} seconds")
             await websocket.send(json_transcription)
