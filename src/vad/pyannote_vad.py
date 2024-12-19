@@ -1,10 +1,11 @@
 import os
 from os import remove
-import io
+
 
 from pyannote.audio import Model
 from pyannote.audio.pipelines import VoiceActivityDetection
-import torchaudio
+import torch
+import numpy as np
 
 from src.audio_utils import save_audio_to_file
 from src.client import Client
@@ -57,7 +58,8 @@ class PyannoteVAD(VADInterface):
         # audio_file_path = await save_audio_to_file(
         #     scratch_buffer, client.get_file_name()
         # )
-        waveform = torchaudio.load(io.BytesIO(client.scratch_buffer))
+        buffer = np.frombuffer(client.scratch_buffer, dtype=np.int16).astype(np.float32) / 32767.0
+        waveform = torch.from_numpy(buffer)
         audio_data = {"waveform": waveform, "sample_rate": 16000}
 
         vad_results = self.vad_pipeline(audio_data)
