@@ -86,7 +86,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
 
 
             self.current_chunk += self.client.scratch_buffer
-            self.client.scratch_buffer.clear
+            self.client.scratch_buffer.clear()
             # Schedule the processing in a separate task
             asyncio.create_task(
                 self.process_audio_async(websocket, vad_pipeline, asr_pipeline)
