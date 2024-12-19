@@ -139,6 +139,6 @@ class FasterWhisperASR(ASRInterface):
         print(f"Flattened: {flattened_words}")
 
         to_return = {
-            "text": " ".join([s.text.strip() for s in flattened_words]),
+            "text": " ".join(flattened_words),
         }
         return to_return
