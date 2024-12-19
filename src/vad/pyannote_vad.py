@@ -3,8 +3,10 @@ from os import remove
 
 from pyannote.audio import Model
 from pyannote.audio.pipelines import VoiceActivityDetection
+import numpy as np
 
 from src.audio_utils import save_audio_to_file
+from src.client import Client
 
 from .vad_interface import VADInterface
 
@@ -50,12 +52,15 @@ class PyannoteVAD(VADInterface):
         self.vad_pipeline = VoiceActivityDetection(segmentation=self.model)
         self.vad_pipeline.instantiate(pyannote_args)
 
-    async def detect_activity(self, client):
-        audio_file_path = await save_audio_to_file(
-            client.scratch_buffer, client.get_file_name()
-        )
-        vad_results = self.vad_pipeline(audio_file_path)
-        remove(audio_file_path)
+    async def detect_activity(self, client: Client):
+        # audio_file_path = await save_audio_to_file(
+        #     scratch_buffer, client.get_file_name()
+        # )
+        waveform = np.frombuffer(client.scratch_buffer, dtype=np.int16)
+        audio_data = {"waveform": waveform, "sample_rate": 16000}
+
+        vad_results = self.vad_pipeline(audio_data)
+        # remove(audio_file_path)
         vad_segments = []
         if len(vad_results) > 0:
             vad_segments = [
