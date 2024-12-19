@@ -129,7 +129,7 @@ class FasterWhisperASR(ASRInterface):
         segments, info = self.asr_pipeline.transcribe(
             ndarray
         )
-        print(f"Transcription finished")
+        print(f"Transcription finished: {segments} - {info}")
 
         segments = list(segments)  # The transcription will actually run here.
         
