@@ -128,5 +128,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
                 await websocket.send(json_transcription)
         else:
             self.current_chunk += self.client.scratch_buffer
-            print(f"Still talking, now at {self.current_chunk}")
             self.client.scratch_buffer.clear()
+            self.client.scratch_buffer += self.current_chunk
+            print(f"Still talking, now at {len(self.client.scratch_buffer)}")
+            self.current_chunk.clear()
