@@ -125,7 +125,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             self.current_chunk += self.client.buffer
             self.client.buffer.clear()
             last_segment_should_end_before = self.get_last_segment_should_end_before()
-            vat_start = time.time()
+            vad_start = time.time()
             vad_results = await vad_pipeline.detect_activity(self.current_chunk)
             vad_end = time.time()
             if loop_count % 5 == 0:
