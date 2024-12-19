@@ -117,7 +117,10 @@ class FasterWhisperASR(ASRInterface):
         model_size = kwargs.get("model_size", "large-v3")
         # Run on GPU with FP16
         self.asr_pipeline = WhisperModel(
-            model_size, device="cuda", compute_type="float16"
+            model_size,
+            device="cuda",
+            compute_type="float16",
+            num_workers=4
         )
 
     async def transcribe(self, client: Client):
