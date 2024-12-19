@@ -34,6 +34,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
                       'chunk_length_seconds' and 'chunk_offset_seconds'.
         """
         self.client = client
+        self.current_chunk = bytearray()
 
         self.chunk_length_seconds = os.environ.get(
             "BUFFERING_CHUNK_LENGTH_SECONDS"
@@ -48,14 +49,17 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         if not self.chunk_offset_seconds:
             self.chunk_offset_seconds = kwargs.get("chunk_offset_seconds")
         self.chunk_offset_seconds = float(self.chunk_offset_seconds)
+        self.chunk_length_in_bytes = (
+            self.chunk_length_seconds
+            * self.client.sampling_rate
+            * self.client.samples_width
+        )
 
         self.error_if_not_realtime = os.environ.get("ERROR_IF_NOT_REALTIME")
         if not self.error_if_not_realtime:
             self.error_if_not_realtime = kwargs.get(
                 "error_if_not_realtime", False
             )
-
-        self.processing_flag = False
 
     def process_audio(self, websocket, vad_pipeline, asr_pipeline):
         """
@@ -70,25 +74,23 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             vad_pipeline: The voice activity detection pipeline.
             asr_pipeline: The automatic speech recognition pipeline.
         """
-        chunk_length_in_bytes = (
-            self.chunk_length_seconds
-            * self.client.sampling_rate
-            * self.client.samples_width
-        )
-        if len(self.client.buffer) > chunk_length_in_bytes:
-            if self.processing_flag:
-                exit(
-                    "Error in realtime processing: tried processing a new "
-                    "chunk while the previous one was still being processed"
-                )
+        if len(self.client.buffer) < self.chunk_length_in_bytes:
+            return
 
-            self.client.scratch_buffer += self.client.buffer
-            self.client.buffer.clear()
-            self.processing_flag = True
-            # Schedule the processing in a separate task
-            asyncio.create_task(
-                self.process_audio_async(websocket, vad_pipeline, asr_pipeline)
-            )
+        self.client.scratch_buffer += self.client.buffer
+        self.client.buffer.clear()
+
+        if len(self.current_chunk) > 0:
+            print(f"Still processing {len(self.current_chunk)}, now waiting for {len(self.client.scratch_buffer)}")
+            return
+
+
+        self.current_chunk += self.client.scratch_buffer
+        self.client.scratch_buffer.clear()
+        # Schedule the processing in a separate task
+        asyncio.create_task(
+            self.process_audio_async(websocket, vad_pipeline, asr_pipeline)
+        )
 
     async def process_audio_async(self, websocket, vad_pipeline, asr_pipeline):
         """
@@ -105,27 +107,28 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             asr_pipeline: The automatic speech recognition pipeline.
         """
         start = time.time()
-        vad_results = await vad_pipeline.detect_activity(self.client)
+        vad_results = await vad_pipeline.detect_activity(self.current_chunk)
 
         if len(vad_results) == 0:
-            self.client.scratch_buffer.clear()
-            self.client.buffer.clear()
-            self.processing_flag = False
+            self.current_chunk.clear()
             return
 
         last_segment_should_end_before = (
-            len(self.client.scratch_buffer)
+            len(self.current_chunk)
             / (self.client.sampling_rate * self.client.samples_width)
         ) - self.chunk_offset_seconds
         if vad_results[-1]["end"] < last_segment_should_end_before:
-            transcription = await asr_pipeline.transcribe(self.client)
+            transcription = await asr_pipeline.transcribe(self.current_chunk)
+            self.current_chunk.clear()
             if transcription["text"] != "":
                 end = time.time()
                 transcription["processing_time"] = end - start
                 json_transcription = json.dumps(transcription)
                 print(f"transcribed {transcription["text"]} words in {transcription["processing_time"]} seconds")
                 await websocket.send(json_transcription)
+        else:
+            self.current_chunk += self.client.scratch_buffer
             self.client.scratch_buffer.clear()
-            self.client.increment_file_counter()
-
-        self.processing_flag = False
+            self.client.scratch_buffer += self.current_chunk
+            print(f"Still talking, now at {len(self.client.scratch_buffer)}")
+            self.current_chunk.clear()

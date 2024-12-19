@@ -33,12 +33,10 @@ class Client:
             "language": None,
             "processing_strategy": "silence_at_end_of_chunk",
             "processing_args": {
-                "chunk_length_seconds": 5,
+                "chunk_length_seconds": 2,
                 "chunk_offset_seconds": 0.1,
             },
         }
-        self.file_counter = 0
-        self.total_samples = 0
         self.sampling_rate = sampling_rate
         self.samples_width = samples_width
         self.buffering_strategy = (
@@ -61,16 +59,9 @@ class Client:
 
     def append_audio_data(self, audio_data):
         self.buffer.extend(audio_data)
-        self.total_samples += len(audio_data) / self.samples_width
 
     def clear_buffer(self):
         self.buffer.clear()
-
-    def increment_file_counter(self):
-        self.file_counter += 1
-
-    def get_file_name(self):
-        return f"{self.client_id}_{self.file_counter}.wav"
 
     def process_audio(self, websocket, vad_pipeline, asr_pipeline):
         self.buffering_strategy.process_audio(
