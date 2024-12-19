@@ -92,6 +92,9 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             self.process_audio_async(websocket, vad_pipeline, asr_pipeline)
         )
 
+    def get_last_segment_should_end_before(self):
+        return len(self.current_chunk) / (self.client.sampling_rate * self.client.samples_width)
+
     async def process_audio_async(self, websocket, vad_pipeline, asr_pipeline):
         """
         Asynchronously process audio for activity detection and transcription.
@@ -113,22 +116,17 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             self.current_chunk.clear()
             return
 
-        last_segment_should_end_before = (
-            len(self.current_chunk)
-            / (self.client.sampling_rate * self.client.samples_width)
-        ) - self.chunk_offset_seconds
-        if vad_results[-1]["end"] < last_segment_should_end_before:
-            transcription = await asr_pipeline.transcribe(self.current_chunk)
-            self.current_chunk.clear()
-            if transcription["text"] != "":
-                end = time.time()
-                transcription["processing_time"] = end - start
-                json_transcription = json.dumps(transcription)
-                print(f"transcribed {transcription["text"]} words in {transcription["processing_time"]} seconds")
-                await websocket.send(json_transcription)
-        else:
+        while vad_results[-1]["end"] > self.get_last_segment_should_end_before():
             self.current_chunk += self.client.scratch_buffer
             self.client.scratch_buffer.clear()
-            self.client.scratch_buffer += self.current_chunk
-            print(f"Still talking, now at {len(self.client.scratch_buffer)}")
-            self.current_chunk.clear()
+            print(f"Still talking, now at {len(self.current_chunk)}")
+            vad_results = await vad_pipeline.detect_activity(self.current_chunk)
+
+        transcription = await asr_pipeline.transcribe(self.current_chunk)
+        self.current_chunk.clear()
+        if transcription["text"] != "":
+            end = time.time()
+            transcription["processing_time"] = end - start
+            json_transcription = json.dumps(transcription)
+            print(f"transcribed {transcription["text"]} words in {transcription["processing_time"]} seconds")
+            await websocket.send(json_transcription)
