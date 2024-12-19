@@ -127,7 +127,7 @@ class FasterWhisperASR(ASRInterface):
         ndarray = np.frombuffer(buffer, dtype=np.int16)
         print(f"Starting transcription")
         segments, info = self.asr_pipeline.transcribe(
-            ndarray
+            ndarray, word_timestamps=True
         )
         print(f"Transcription finished: {segments} - {info}")
 
