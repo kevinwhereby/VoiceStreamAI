@@ -142,6 +142,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         while vad_results[-1]["end"] > last_segment_should_end_before:
             print(f"Still talking")
             await asyncio.sleep(1)
+            print(f"Lets add {len(self.client.buffer)} to the scratch")
             self.client.scratch_buffer += self.client.buffer
             self.client.buffer.clear()
             last_segment_should_end_before = self.get_last_segment_should_end_before()

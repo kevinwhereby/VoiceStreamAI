@@ -121,14 +121,15 @@ class FasterWhisperASR(ASRInterface):
             device="cuda",
             compute_type="float16",
             num_workers=1,
-            temperature=0
         )
 
     async def transcribe(self, buffer):
         ndarray = np.frombuffer(buffer, dtype=np.int16)
+        print(f"Starting transcription")
         segments, info = self.asr_pipeline.transcribe(
             ndarray
         )
+        print(f"Transcription finished")
 
         segments = list(segments)  # The transcription will actually run here.
         
@@ -137,17 +138,6 @@ class FasterWhisperASR(ASRInterface):
         ]
 
         to_return = {
-            # "language": info.language,
-            # "language_probability": info.language_probability,
             "text": " ".join([s.text.strip() for s in segments]),
-            # "words": [
-            #     {
-            #         "word": w.word,
-            #         "start": w.start,
-            #         "end": w.end,
-            #         "probability": w.probability,
-            #     }
-            #     for w in flattened_words
-            # ],
         }
         return to_return
