@@ -55,18 +55,13 @@ class PyannoteVAD(VADInterface):
         self.vad_pipeline = VoiceActivityDetection(segmentation=self.model)
         self.vad_pipeline.instantiate(pyannote_args)
 
-    async def detect_activity(self, client: Client):
-        # audio_file_path = await save_audio_to_file(
-        #     scratch_buffer, client.get_file_name()
-        # )
-        buffer = np.frombuffer(client.scratch_buffer, dtype=np.int16).astype(np.float32) / 32767.0
-        waveform = torch.from_numpy(buffer).reshape((1, -1))
-        print(f"Audio shape: {waveform.shape}")
-
+    async def detect_activity(self, buffer):
+        data = np.frombuffer(buffer, dtype=np.int16).astype(np.float32) / 32767.0
+        waveform = torch.from_numpy(data).reshape((1, -1))
         audio_data = {"waveform": waveform, "sample_rate": 16000}
 
         vad_results = self.vad_pipeline(audio_data)
-        # remove(audio_file_path)
+
         vad_segments = []
         if len(vad_results) > 0:
             vad_segments = [

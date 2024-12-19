@@ -120,18 +120,13 @@ class FasterWhisperASR(ASRInterface):
             model_size,
             device="cuda",
             compute_type="float16",
-            num_workers=4
+            num_workers=1
         )
 
-    async def transcribe(self, client: Client):
-        language = (
-            None
-            if client.config["language"] is None
-            else language_codes.get(client.config["language"].lower())
-        )
-        ndarray = np.frombuffer(client.scratch_buffer, dtype=np.int16)
+    async def transcribe(self, buffer):
+        ndarray = np.frombuffer(buffer, dtype=np.int16)
         segments, info = self.asr_pipeline.transcribe(
-            ndarray, word_timestamps=True, language=language
+            ndarray, word_timestamps=True
         )
 
         segments = list(segments)  # The transcription will actually run here.

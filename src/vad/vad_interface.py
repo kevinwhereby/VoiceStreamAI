@@ -3,12 +3,12 @@ class VADInterface:
     Interface for voice activity detection (VAD) systems.
     """
 
-    async def detect_activity(self, client):
+    async def detect_activity(self, buffer):
         """
         Detects voice activity in the given audio data.
 
         Args:
-            client (src.Client): The client to detect on
+            buffer: The audio buffer
 
         Returns:
             List: VAD result, a list of objects containing "start", "end",
