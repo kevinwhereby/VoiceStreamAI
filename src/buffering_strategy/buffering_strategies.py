@@ -118,6 +118,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             return
 
         while vad_results[-1]["end"] > last_segment_should_end_before:
+            print(f"loop {len(self.client.scratch_buffer)}")
             self.current_chunk += self.client.scratch_buffer
             self.client.scratch_buffer.clear()
             print(f"Still talking, now at {len(self.current_chunk)}, {last_segment_should_end_before}")
