@@ -110,16 +110,18 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             asr_pipeline: The automatic speech recognition pipeline.
         """
         start = time.time()
+        last_segment_should_end_before = self.get_last_segment_should_end_before()
         vad_results = await vad_pipeline.detect_activity(self.current_chunk)
 
         if len(vad_results) == 0:
             self.current_chunk.clear()
             return
 
-        while vad_results[-1]["end"] > self.get_last_segment_should_end_before():
+        while vad_results[-1]["end"] > last_segment_should_end_before:
             self.current_chunk += self.client.scratch_buffer
             self.client.scratch_buffer.clear()
-            print(f"Still talking, now at {len(self.current_chunk)}")
+            print(f"Still talking, now at {len(self.current_chunk)}, {last_segment_should_end_before}")
+            last_segment_should_end_before = self.get_last_segment_should_end_before()
             vad_results = await vad_pipeline.detect_activity(self.current_chunk)
 
         transcription = await asr_pipeline.transcribe(self.current_chunk)
