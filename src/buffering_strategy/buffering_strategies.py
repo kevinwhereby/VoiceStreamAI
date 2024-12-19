@@ -5,7 +5,6 @@ import time
 
 from .buffering_strategy_interface import BufferingStrategyInterface
 
-
 class SilenceAtEndOfChunk(BufferingStrategyInterface):
     """
     A buffering strategy that processes audio at the end of each chunk with
@@ -81,7 +80,6 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         self.client.scratch_buffer += self.client.buffer
         self.client.buffer.clear()
 
-
         if len(self.current_chunk) > 0:
             print(f"Still processing {len(self.current_chunk)}, now waiting for {len(self.client.scratch_buffer)}")
             return
@@ -119,20 +117,17 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             self.current_chunk.clear()
             return
 
-        loop_count = 0
         while vad_results[-1]["end"] > last_segment_should_end_before:
-            loop_count += 1
+            condition = asyncio.Condition()
+            async with condition:
+                await condition.wait_for(lambda: len(self.client.buffer) > 0)
+            print(f"we got data: {len(self.client.buffer)}")
             self.current_chunk += self.client.buffer
             self.client.buffer.clear()
             last_segment_should_end_before = self.get_last_segment_should_end_before()
             vad_start = time.time()
             vad_results = await vad_pipeline.detect_activity(self.current_chunk)
             vad_end = time.time()
-            if loop_count % 5 == 0:
-                print(f"Vad took {vad_end - vad_start}")
-                print(f"Still talking, now at {len(self.current_chunk)}, {last_segment_should_end_before}")
-
-
 
         transcription = await asr_pipeline.transcribe(self.current_chunk)
         self.current_chunk.clear()
