@@ -77,7 +77,6 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         if len(self.client.buffer) < self.chunk_length_in_bytes:
             return
 
-        print(f"more data! {len(self.client.buffer)} >> {len(self.client.scratch_buffer)}")
         self.client.scratch_buffer += self.client.buffer
         self.client.buffer.clear()
 
@@ -120,8 +119,8 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             return
 
         while vad_results[-1]["end"] > last_segment_should_end_before:
-            self.current_chunk += self.client.scratch_buffer
-            self.client.scratch_buffer.clear()
+            self.current_chunk += self.client.buffer
+            self.client.buffer.clear()
             print(f"Still talking, now at {len(self.current_chunk)}, {last_segment_should_end_before}")
             last_segment_should_end_before = self.get_last_segment_should_end_before()
             vad_results = await vad_pipeline.detect_activity(self.current_chunk)
