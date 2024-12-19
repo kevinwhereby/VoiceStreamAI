@@ -136,6 +136,8 @@ class FasterWhisperASR(ASRInterface):
             segment.text for segment in list(segments)
         ]
 
+        print(f"Flattened: {flattened_words}")
+
         to_return = {
             "text": " ".join([s.text.strip() for s in segments]),
         }
