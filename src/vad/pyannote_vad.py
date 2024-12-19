@@ -56,7 +56,7 @@ class PyannoteVAD(VADInterface):
         # audio_file_path = await save_audio_to_file(
         #     scratch_buffer, client.get_file_name()
         # )
-        waveform = torchaudio.load(client.scratch_buffer)
+        waveform = torchaudio.load(BytesIO(client.scratch_buffer))
         audio_data = {"waveform": waveform, "sample_rate": 16000}
 
         vad_results = self.vad_pipeline(audio_data)
