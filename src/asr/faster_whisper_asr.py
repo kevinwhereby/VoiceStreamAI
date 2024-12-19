@@ -3,6 +3,7 @@ import os
 from faster_whisper import WhisperModel
 
 from src.audio_utils import save_audio_to_file
+from src.client import Client
 
 from .asr_interface import ASRInterface
 
@@ -118,10 +119,10 @@ class FasterWhisperASR(ASRInterface):
             model_size, device="cuda", compute_type="float16"
         )
 
-    async def transcribe(self, client):
-        file_path = await save_audio_to_file(
-            client.scratch_buffer, client.get_file_name()
-        )
+    async def transcribe(self, client: Client):
+        # file_path = await save_audio_to_file(
+        #     client.scratch_buffer, client.get_file_name()
+        # )
 
         language = (
             None
@@ -129,11 +130,11 @@ class FasterWhisperASR(ASRInterface):
             else language_codes.get(client.config["language"].lower())
         )
         segments, info = self.asr_pipeline.transcribe(
-            file_path, word_timestamps=True, language=language
+            client.scratch_buffer, word_timestamps=True, language=language
         )
 
         segments = list(segments)  # The transcription will actually run here.
-        os.remove(file_path)
+        # os.remove(file_path)
 
         flattened_words = [
             word for segment in segments for word in segment.words
