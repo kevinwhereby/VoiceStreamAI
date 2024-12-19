@@ -1,6 +1,7 @@
 import os
 from os import remove
 import io
+import time
 
 from pyannote.audio import Model
 from pyannote.audio.pipelines import VoiceActivityDetection
@@ -67,7 +68,7 @@ class PyannoteVAD(VADInterface):
         vad_segments = []
         if len(vad_results) > 0:
             end = time.time()
-            print(f"Vad took {end - start}")
+            print(f"Vad took {end - start   }")
             vad_segments = [
                 {"start": segment.start, "end": segment.end, "confidence": 1.0}
                 for segment in vad_results.itersegments()
