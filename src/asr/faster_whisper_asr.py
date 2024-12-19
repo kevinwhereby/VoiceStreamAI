@@ -131,6 +131,7 @@ class FasterWhisperASR(ASRInterface):
             self.asr_pipeline.transcribe,
             ndarray
         )
+        print(f"Finished transcription: {segments}")
         flattened_words = [
             segment.text for segment in list(segments)
         ]
