@@ -60,11 +60,10 @@ class PyannoteVAD(VADInterface):
         #     scratch_buffer, client.get_file_name()
         # )
         buffer = np.frombuffer(client.scratch_buffer, dtype=np.int16).astype(np.float32) / 32767.0
-        waveform = torch.from_numpy(buffer)
-        waveform.reshape((1, -1))
+        waveform = torch.from_numpy(buffer).reshape((1, -1))
         print(f"Audio shape: {waveform.shape}")
 
-        audio_data = {"waveform": waveform, "sample_rate": sample_rate}
+        audio_data = {"waveform": waveform, "sample_rate": 16000}
 
         vad_results = self.vad_pipeline(audio_data)
         # remove(audio_file_path)
