@@ -140,9 +140,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             return
 
         while vad_results[-1]["end"] > last_segment_should_end_before:
-            print(f"Still talking")
             await asyncio.sleep(1)
-            print(f"Lets add {len(self.client.buffer)} to the scratch")
             self.client.scratch_buffer += self.client.buffer
             self.client.buffer.clear()
             last_segment_should_end_before = self.get_last_segment_should_end_before()
@@ -151,11 +149,10 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             vad_end = time.time()
 
         transcription = await asr_pipeline.transcribe(self.client.scratch_buffer)
-        print(f"Got transcription {transcription}")
         self.client.scratch_buffer.clear()
         if transcription["text"] != "":
             end = time.time()
             transcription["processing_time"] = end - start
             json_transcription = json.dumps(transcription)
-            print(f"transcribed {transcription["text"]} words in {transcription["processing_time"]} seconds")
+            print(f"transcribed {len(transcription["text"].split(" "))} words in {transcription["processing_time"]} seconds")
             await websocket.send(json_transcription)
