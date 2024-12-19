@@ -4,7 +4,6 @@ import os
 import time
 
 from .buffering_strategy_interface import BufferingStrategyInterface
-from src.client import Client
 
 
 class SilenceAtEndOfChunk(BufferingStrategyInterface):
@@ -24,7 +23,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
                                       for processing audio chunks.
     """
 
-    def __init__(self, client: Client, **kwargs):
+    def __init__(self, client, **kwargs):
         """
         Initialize the SilenceAtEndOfChunk buffering strategy.
 
@@ -35,7 +34,6 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
                       'chunk_length_seconds' and 'chunk_offset_seconds'.
         """
         self.client = client
-        self.queue = asyncio.Queue()
         self.current_chunk = bytearray()
 
         self.chunk_length_seconds = os.environ.get(
