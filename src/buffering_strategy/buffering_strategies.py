@@ -139,7 +139,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             self.client.scratch_buffer.clear()
             return
 
-        while vad_results[-1]["end"] > last_segment_should_end_before:
+        while len(vad_results) == 0 or vad_results[-1]["end"] > last_segment_should_end_before:
             await asyncio.sleep(1)
             self.client.scratch_buffer += self.client.buffer
             self.client.buffer.clear()
