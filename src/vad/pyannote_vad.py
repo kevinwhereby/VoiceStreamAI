@@ -2,6 +2,7 @@ import os
 from os import remove
 import io
 import time
+import asyncio
 
 from pyannote.audio import Model
 from pyannote.audio.pipelines import VoiceActivityDetection
@@ -61,7 +62,10 @@ class PyannoteVAD(VADInterface):
         waveform = torch.from_numpy(data).reshape((1, -1))
         audio_data = {"waveform": waveform, "sample_rate": 16000}
 
-        vad_results = self.vad_pipeline(audio_data)
+        vad_results = await asyncio.to_thread(
+            self.vad_pipeline,
+            audio_data
+        )
 
         vad_segments = []
         if len(vad_results) > 0:

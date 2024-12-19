@@ -1,4 +1,5 @@
 import os
+import asyncio
 
 from faster_whisper import WhisperModel
 
@@ -126,13 +127,12 @@ class FasterWhisperASR(ASRInterface):
     async def transcribe(self, buffer):
         ndarray = np.frombuffer(buffer, dtype=np.int16)
         print(f"Starting transcription")
-        segments, info = self.asr_pipeline.transcribe(
+        segments, info = await asyncio.to_thread(
+            self.asr_pipeline.transcribe,
             ndarray
         )
-        segments = list(segments)
-
         flattened_words = [
-            segment.text for segment in segments
+            segment.text for segment in list(segments)
         ]
 
         to_return = {
