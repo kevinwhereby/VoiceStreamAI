@@ -2,8 +2,34 @@ import asyncio
 import json
 import os
 import time
+from typing import Set
 
 from .buffering_strategy_interface import BufferingStrategyInterface
+
+class Command:
+
+    """A command, an asynchronous task, imagine an asynchronous action."""
+
+    async def run(self):
+        """To be defined in sub-classes."""
+        pass
+
+    async def start(self, condition: asyncio.Condition,
+            commands: Set['Command']):
+        """
+        Start the task, calling run asynchronously.
+
+        This method also keeps track of the running commands.
+
+        """
+        commands.add(self)
+        await self.run()
+        commands.remove(self)
+
+        # At this point, we should ask the condition to update
+        # as the number of running commands might have reached 0.
+        async with condition:
+            condition.notify()
 
 class SilenceAtEndOfChunk(BufferingStrategyInterface):
     """
@@ -115,11 +141,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
 
         while vad_results[-1]["end"] > last_segment_should_end_before:
             print(f"Still talking")
-            condition = asyncio.Condition()
-            async with condition:
-                print(f"Waiting or data")
-                await condition.wait_for(lambda: len(self.client.buffer) > 0)
-            print(f"we got data: {len(self.client.buffer)}")
+            await asyncio.sleep(1)
             self.client.scratch_buffer += self.client.buffer
             self.client.buffer.clear()
             last_segment_should_end_before = self.get_last_segment_should_end_before()
