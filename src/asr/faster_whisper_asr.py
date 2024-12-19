@@ -129,14 +129,10 @@ class FasterWhisperASR(ASRInterface):
         segments, info = self.asr_pipeline.transcribe(
             ndarray
         )
-        print(f"Transcription finished: {segments}")
-
         segments = list(segments)
 
-        print(f"segmented?: {segments}")# The transcription will actually run here.
-        
         flattened_words = [
-            word for segment in segments for word in segment.words
+            segment.text for segment in segments
         ]
 
         to_return = {
