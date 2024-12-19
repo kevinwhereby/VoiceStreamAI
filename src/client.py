@@ -58,7 +58,6 @@ class Client:
         )
 
     def append_audio_data(self, audio_data):
-        print(f"append {len(audio_data)}")
         self.buffer.extend(audio_data)
 
     def process_audio(self, websocket, vad_pipeline, asr_pipeline):

@@ -3,6 +3,7 @@ import logging
 import ssl
 import uuid
 import http
+import time
 
 import websockets
 
@@ -51,7 +52,10 @@ class Server:
 
     async def handle_audio(self, client, websocket):
         while True:
+            start = time.time()
             message = await websocket.recv()
+            end = time.time()
+            print(f"Message took {end - start} seconds")
 
             if isinstance(message, bytes):
                 client.append_audio_data(message)
