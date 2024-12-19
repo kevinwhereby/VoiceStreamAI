@@ -33,7 +33,6 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
                       'chunk_length_seconds' and 'chunk_offset_seconds'.
         """
         self.client = client
-        self.current_chunk = bytearray()
 
         self.chunk_length_seconds = os.environ.get(
             "BUFFERING_CHUNK_LENGTH_SECONDS"
@@ -77,23 +76,20 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         if len(self.client.buffer) < self.chunk_length_in_bytes:
             return
 
+        if len(self.scratch_buffer) > 0:
+            print(f"Still processing {len(self.client.scratch_buffer)}, now waiting for {len(self.client.buffer)}")
+            return
+
         self.client.scratch_buffer += self.client.buffer
         self.client.buffer.clear()
 
-        if len(self.current_chunk) > 0:
-            print(f"Still processing {len(self.current_chunk)}, now waiting for {len(self.client.scratch_buffer)}")
-            return
-
-
-        self.current_chunk += self.client.scratch_buffer
-        self.client.scratch_buffer.clear()
         # Schedule the processing in a separate task
         asyncio.create_task(
             self.process_audio_async(websocket, vad_pipeline, asr_pipeline)
         )
 
     def get_last_segment_should_end_before(self):
-        return len(self.current_chunk) / (self.client.sampling_rate * self.client.samples_width)
+        return len(self.client.scratch_buffer) / (self.client.sampling_rate * self.client.samples_width)
 
     async def process_audio_async(self, websocket, vad_pipeline, asr_pipeline):
         """
@@ -111,26 +107,28 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         """
         start = time.time()
         last_segment_should_end_before = self.get_last_segment_should_end_before()
-        vad_results = await vad_pipeline.detect_activity(self.current_chunk)
+        vad_results = await vad_pipeline.detect_activity(self.client.scratch_buffer)
 
         if len(vad_results) == 0:
-            self.current_chunk.clear()
+            self.client.scratch_buffer.clear()
             return
 
         while vad_results[-1]["end"] > last_segment_should_end_before:
+            print(f"Still talking")
             condition = asyncio.Condition()
             async with condition:
+                print(f"Waiting or data")
                 await condition.wait_for(lambda: len(self.client.buffer) > 0)
             print(f"we got data: {len(self.client.buffer)}")
-            self.current_chunk += self.client.buffer
+            self.client.scratch_buffer += self.client.buffer
             self.client.buffer.clear()
             last_segment_should_end_before = self.get_last_segment_should_end_before()
             vad_start = time.time()
-            vad_results = await vad_pipeline.detect_activity(self.current_chunk)
+            vad_results = await vad_pipeline.detect_activity(self.client.scratch_buffer)
             vad_end = time.time()
 
-        transcription = await asr_pipeline.transcribe(self.current_chunk)
-        self.current_chunk.clear()
+        transcription = await asr_pipeline.transcribe(self.client.scratch_buffer)
+        self.client.scratch_buffer.clear()
         if transcription["text"] != "":
             end = time.time()
             transcription["processing_time"] = end - start
