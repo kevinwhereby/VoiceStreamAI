@@ -58,10 +58,8 @@ class Client:
         )
 
     def append_audio_data(self, audio_data):
+        print(f"More data! {len(self.buffer)}")
         self.buffer.extend(audio_data)
-
-    def clear_buffer(self):
-        self.buffer.clear()
 
     def process_audio(self, websocket, vad_pipeline, asr_pipeline):
         self.buffering_strategy.process_audio(

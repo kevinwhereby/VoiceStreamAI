@@ -124,10 +124,15 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             loop_count += 1
             self.current_chunk += self.client.buffer
             self.client.buffer.clear()
-            if loop_count % 5 == 0:
-                print(f"Still talking, now at {len(self.current_chunk)}, {last_segment_should_end_before}")
             last_segment_should_end_before = self.get_last_segment_should_end_before()
+            vat_start = time.time()
             vad_results = await vad_pipeline.detect_activity(self.current_chunk)
+            vad_end = time.time()
+            if loop_count % 5 == 0:
+                print(f"Vad took {vad_end - vad_start}")
+                print(f"Still talking, now at {len(self.current_chunk)}, {last_segment_should_end_before}")
+
+
 
         transcription = await asr_pipeline.transcribe(self.current_chunk)
         self.current_chunk.clear()

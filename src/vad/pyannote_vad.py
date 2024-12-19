@@ -57,8 +57,6 @@ class PyannoteVAD(VADInterface):
         self.vad_pipeline.instantiate(pyannote_args)
 
     async def detect_activity(self, buffer):
-        start = time.time()
-
         data = np.frombuffer(buffer, dtype=np.int16).astype(np.float32) / 32767.0
         waveform = torch.from_numpy(data).reshape((1, -1))
         audio_data = {"waveform": waveform, "sample_rate": 16000}
@@ -67,8 +65,6 @@ class PyannoteVAD(VADInterface):
 
         vad_segments = []
         if len(vad_results) > 0:
-            end = time.time()
-            print(f"Vad took {end - start   }")
             vad_segments = [
                 {"start": segment.start, "end": segment.end, "confidence": 1.0}
                 for segment in vad_results.itersegments()
