@@ -4,6 +4,7 @@ import os
 import time
 
 from .buffering_strategy_interface import BufferingStrategyInterface
+from src.client import Client
 
 
 class SilenceAtEndOfChunk(BufferingStrategyInterface):
@@ -23,7 +24,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
                                       for processing audio chunks.
     """
 
-    def __init__(self, client, **kwargs):
+    def __init__(self, client: Client, **kwargs):
         """
         Initialize the SilenceAtEndOfChunk buffering strategy.
 
@@ -80,7 +81,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             self.client.buffer.clear()
 
             if len(self.current_chunk) > 0:
-                print(f"Still processing {len(self.current_chunk)}, now waiting for {len(self.client.scracth_buffer)}")
+                print(f"Still processing {len(self.current_chunk)}, now waiting for {len(self.client.scratch_buffer)}")
                 return
 
 
