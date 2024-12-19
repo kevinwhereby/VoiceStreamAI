@@ -76,7 +76,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         if len(self.client.buffer) < self.chunk_length_in_bytes:
             return
 
-        if len(self.scratch_buffer) > 0:
+        if len(self.client.scratch_buffer) > 0:
             print(f"Still processing {len(self.client.scratch_buffer)}, now waiting for {len(self.client.buffer)}")
             return
 
