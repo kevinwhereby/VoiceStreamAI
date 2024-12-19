@@ -120,7 +120,8 @@ class FasterWhisperASR(ASRInterface):
             model_size,
             device="cuda",
             compute_type="float16",
-            num_workers=1
+            num_workers=1,
+            temperature=0
         )
 
     async def transcribe(self, buffer):

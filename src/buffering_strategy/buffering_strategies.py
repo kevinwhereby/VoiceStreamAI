@@ -2,9 +2,34 @@ import asyncio
 import json
 import os
 import time
+from typing import Set
 
 from .buffering_strategy_interface import BufferingStrategyInterface
 
+class Command:
+
+    """A command, an asynchronous task, imagine an asynchronous action."""
+
+    async def run(self):
+        """To be defined in sub-classes."""
+        pass
+
+    async def start(self, condition: asyncio.Condition,
+            commands: Set['Command']):
+        """
+        Start the task, calling run asynchronously.
+
+        This method also keeps track of the running commands.
+
+        """
+        commands.add(self)
+        await self.run()
+        commands.remove(self)
+
+        # At this point, we should ask the condition to update
+        # as the number of running commands might have reached 0.
+        async with condition:
+            condition.notify()
 
 class SilenceAtEndOfChunk(BufferingStrategyInterface):
     """
@@ -34,7 +59,6 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
                       'chunk_length_seconds' and 'chunk_offset_seconds'.
         """
         self.client = client
-        self.current_chunk = bytearray()
 
         self.chunk_length_seconds = os.environ.get(
             "BUFFERING_CHUNK_LENGTH_SECONDS"
@@ -74,23 +98,24 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             vad_pipeline: The voice activity detection pipeline.
             asr_pipeline: The automatic speech recognition pipeline.
         """
+
         if len(self.client.buffer) < self.chunk_length_in_bytes:
+            return
+
+        if len(self.client.scratch_buffer) > 0:
+            print(f"Still processing {len(self.client.scratch_buffer)}, now waiting for {len(self.client.buffer)}")
             return
 
         self.client.scratch_buffer += self.client.buffer
         self.client.buffer.clear()
 
-        if len(self.current_chunk) > 0:
-            print(f"Still processing {len(self.current_chunk)}, now waiting for {len(self.client.scratch_buffer)}")
-            return
-
-
-        self.current_chunk += self.client.scratch_buffer
-        self.client.scratch_buffer.clear()
         # Schedule the processing in a separate task
         asyncio.create_task(
             self.process_audio_async(websocket, vad_pipeline, asr_pipeline)
         )
+
+    def get_last_segment_should_end_before(self):
+        return len(self.client.scratch_buffer) / (self.client.sampling_rate * self.client.samples_width)
 
     async def process_audio_async(self, websocket, vad_pipeline, asr_pipeline):
         """
@@ -107,28 +132,28 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             asr_pipeline: The automatic speech recognition pipeline.
         """
         start = time.time()
-        vad_results = await vad_pipeline.detect_activity(self.current_chunk)
+        last_segment_should_end_before = self.get_last_segment_should_end_before()
+        vad_results = await vad_pipeline.detect_activity(self.client.scratch_buffer)
 
         if len(vad_results) == 0:
-            self.current_chunk.clear()
+            self.client.scratch_buffer.clear()
             return
 
-        last_segment_should_end_before = (
-            len(self.current_chunk)
-            / (self.client.sampling_rate * self.client.samples_width)
-        ) - self.chunk_offset_seconds
-        if vad_results[-1]["end"] < last_segment_should_end_before:
-            transcription = await asr_pipeline.transcribe(self.current_chunk)
-            self.current_chunk.clear()
-            if transcription["text"] != "":
-                end = time.time()
-                transcription["processing_time"] = end - start
-                json_transcription = json.dumps(transcription)
-                print(f"transcribed {transcription["text"]} words in {transcription["processing_time"]} seconds")
-                await websocket.send(json_transcription)
-        else:
-            self.current_chunk += self.client.scratch_buffer
-            self.client.scratch_buffer.clear()
-            self.client.scratch_buffer += self.current_chunk
-            print(f"Still talking, now at {len(self.client.scratch_buffer)}")
-            self.current_chunk.clear()
+        while vad_results[-1]["end"] > last_segment_should_end_before:
+            print(f"Still talking")
+            await asyncio.sleep(1)
+            self.client.scratch_buffer += self.client.buffer
+            self.client.buffer.clear()
+            last_segment_should_end_before = self.get_last_segment_should_end_before()
+            vad_start = time.time()
+            vad_results = await vad_pipeline.detect_activity(self.client.scratch_buffer)
+            vad_end = time.time()
+
+        transcription = await asr_pipeline.transcribe(self.client.scratch_buffer)
+        self.client.scratch_buffer.clear()
+        if transcription["text"] != "":
+            end = time.time()
+            transcription["processing_time"] = end - start
+            json_transcription = json.dumps(transcription)
+            print(f"transcribed {transcription["text"]} words in {transcription["processing_time"]} seconds")
+            await websocket.send(json_transcription)

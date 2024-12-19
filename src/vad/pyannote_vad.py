@@ -1,6 +1,7 @@
 import os
 from os import remove
 import io
+import time
 
 from pyannote.audio import Model
 from pyannote.audio.pipelines import VoiceActivityDetection
