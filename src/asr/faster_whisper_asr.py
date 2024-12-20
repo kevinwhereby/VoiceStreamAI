@@ -3,6 +3,7 @@ import asyncio
 from faster_whisper import WhisperModel
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
+import time
 
 from .asr_interface import ASRInterface
 
@@ -110,35 +111,52 @@ language_codes = {
 }
 
 
-def transcribe_worker(buffer, model_size):
-    """Standalone function that runs in a separate process"""
-    from faster_whisper import WhisperModel
+class WhisperWorker:
+    def __init__(self, model_size):
+        from faster_whisper import WhisperModel
 
-    model = WhisperModel(
-        model_size, device="cuda", compute_type="float16", num_workers=1
-    )
+        self.model = WhisperModel(
+            model_size,
+            device="cuda",
+            compute_type="float16",
+            num_workers=1,
+        )
 
-    ndarray = np.frombuffer(buffer, dtype=np.int16)
-    segments, info = model.transcribe(ndarray)
-    segments = list(segments)
+    def transcribe(self, buffer):
+        ndarray = np.frombuffer(buffer, dtype=np.int16)
+        segments, info = self.model.transcribe(ndarray)
+        segments = list(segments)
+        return {
+            "text": " ".join([s.text.strip() for s in segments]),
+        }
 
-    return {
-        "text": " ".join([s.text.strip() for s in segments]),
-    }
+
+def init_worker(model_size):
+    # This will run once per worker process
+    global worker
+    worker = WhisperWorker(model_size)
+
+
+def transcribe_worker(buffer):
+    # Uses the global worker instance initialized in init_worker
+    global worker
+    return worker.transcribe(buffer)
 
 
 class FasterWhisperASR(ASRInterface):
     def __init__(self, **kwargs):
         self.model_size = kwargs.get("model_size", "large-v3")
-        self.process_pool = ProcessPoolExecutor(max_workers=2)
+        # Initialize pool with workers that already have the model loaded
+        self.process_pool = ProcessPoolExecutor(
+            max_workers=4, initializer=init_worker, initargs=(self.model_size,)
+        )
 
     async def transcribe(self, buffer):
         loop = asyncio.get_running_loop()
 
         try:
-            # Pass only serializable objects to the process
             result = await loop.run_in_executor(
-                self.process_pool, transcribe_worker, buffer, self.model_size
+                self.process_pool, transcribe_worker, buffer
             )
             return result
         except Exception as e:

@@ -129,7 +129,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             vad_pipeline: The voice activity detection pipeline.
             asr_pipeline: The automatic speech recognition pipeline.
         """
-        start = time.time()
+
         last_segment_should_end_before = self.get_last_segment_should_end_before()
         vad_results = await vad_pipeline.detect_activity(self.client.scratch_buffer)
 
@@ -147,8 +147,10 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             last_segment_should_end_before = self.get_last_segment_should_end_before()
             vad_results = await vad_pipeline.detect_activity(self.client.scratch_buffer)
 
-        transcription = await asr_pipeline.transcribe(self.client.scratch_buffer)
+        start = time.time()
+        copy = self.client.scratch_buffer.copy()
         self.client.scratch_buffer.clear()
+        transcription = await asr_pipeline.transcribe(copy)
         if transcription["text"] != "":
             end = time.time()
             transcription["processing_time"] = end - start
