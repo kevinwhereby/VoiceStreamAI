@@ -11,6 +11,7 @@ class Transcriber:
         form.add_field(
             "file", io.BytesIO(bytes), filename="audio.raw", content_type="audio/x-raw"
         )
+        form.add_field("language", "en")  # Add the language field
         async with aiohttp.ClientSession() as session:
             async with session.post(self.url, data=form) as response:
                 response.raise_for_status()
