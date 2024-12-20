@@ -110,9 +110,11 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         asyncio.create_task(self.process_audio_async(websocket, vad_pipeline))
 
     def get_last_segment_should_end_before(self):
-        return len(self.client.scratch_buffer) / (
-            self.client.sampling_rate * self.client.samples_width
-        )
+        last_segment_should_end_before = (
+            len(self.client.scratch_buffer)
+            / (self.client.sampling_rate * self.client.samples_width)
+        ) - self.chunk_offset_seconds
+        return last_segment_should_end_before
 
     async def process_audio_async(self, websocket, vad_pipeline):
         """
