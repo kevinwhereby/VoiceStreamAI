@@ -148,7 +148,8 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             vad_results = await vad_pipeline.detect_activity(self.client.scratch_buffer)
             vad_end = time.time()
 
-        transcription = await asr_pipeline.transcribe(self.client.scratch_buffer)
+        # transcription = await asr_pipeline.transcribe(self.client.scratch_buffer)
+        transcription = { "text": "" }
         self.client.scratch_buffer.clear()
         if transcription["text"] != "":
             end = time.time()

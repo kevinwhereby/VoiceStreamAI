@@ -69,9 +69,8 @@ class Server:
                 print(f"Unexpected message type from {client.client_id}")
 
             # this is synchronous, any async operation is in BufferingStrategy
-            client.process_audio(
-                websocket, self.vad_pipeline, self.asr_pipeline
-            )
+            client.process_audio(websocket, self.vad_pipeline, self.asr_pipeline)
+
     async def health_check(self, path, request_headers):
         if path == "/health":
             print(f"Healthcheck OK")
@@ -97,5 +96,8 @@ class Server:
             f"{self.host}:{self.port}"
         )
         return websockets.serve(
-            self.handle_websocket, self.host, self.port, process_request=self.health_check
+            self.handle_websocket,
+            self.host,
+            self.port,
+            process_request=self.health_check,
         )
