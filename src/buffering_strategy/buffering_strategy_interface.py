@@ -15,7 +15,7 @@ class BufferingStrategyInterface:
                        by subclasses.
     """
 
-    def process_audio(self, websocket, vad_pipeline, asr_pipeline):
+    def process_audio(self, websocket, vad_pipeline):
         """
         Process audio data using the given WebSocket connection, VAD pipeline,
         and ASR pipeline.
@@ -36,6 +36,4 @@ class BufferingStrategyInterface:
             NotImplementedError: If the method is not implemented in the
                                  subclass.
         """
-        raise NotImplementedError(
-            "This method should be implemented by subclasses."
-        )
+        raise NotImplementedError("This method should be implemented by subclasses.")

@@ -3,6 +3,7 @@
 from src.buffering_strategy.buffering_strategy_factory import (
     BufferingStrategyFactory,
 )
+from src.transcriber.transcriber import Transcriber
 
 
 class Client:
@@ -39,28 +40,28 @@ class Client:
         }
         self.sampling_rate = sampling_rate
         self.samples_width = samples_width
-        self.buffering_strategy = (
-            BufferingStrategyFactory.create_buffering_strategy(
-                self.config["processing_strategy"],
-                self,
-                **self.config["processing_args"],
-            )
+        self.buffering_strategy = BufferingStrategyFactory.create_buffering_strategy(
+            self.config["processing_strategy"],
+            self,
+            Transcriber(
+                "http://ec2-54-194-146-152.eu-west-1.compute.amazonaws.com:8080/v1/audio/transcriptions"
+            ),
+            **self.config["processing_args"],
         )
 
     def update_config(self, config_data):
         self.config.update(config_data)
-        self.buffering_strategy = (
-            BufferingStrategyFactory.create_buffering_strategy(
-                self.config["processing_strategy"],
-                self,
-                **self.config["processing_args"],
-            )
+        self.buffering_strategy = BufferingStrategyFactory.create_buffering_strategy(
+            self.config["processing_strategy"],
+            self,
+            Transcriber(
+                "http://ec2-54-194-146-152.eu-west-1.compute.amazonaws.com:8080/v1/audio/transcriptions"
+            ),
+            **self.config["processing_args"],
         )
 
     def append_audio_data(self, audio_data):
         self.buffer.extend(audio_data)
 
     def process_audio(self, websocket, vad_pipeline, asr_pipeline):
-        self.buffering_strategy.process_audio(
-            websocket, vad_pipeline, asr_pipeline
-        )
+        self.buffering_strategy.process_audio(websocket, vad_pipeline)

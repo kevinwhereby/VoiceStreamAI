@@ -48,7 +48,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
                                       for processing audio chunks.
     """
 
-    def __init__(self, client, **kwargs):
+    def __init__(self, client, transcriber, **kwargs):
         """
         Initialize the SilenceAtEndOfChunk buffering strategy.
 
@@ -59,6 +59,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
                       'chunk_length_seconds' and 'chunk_offset_seconds'.
         """
         self.client = client
+        self.transcriber = transcriber
 
         self.chunk_length_seconds = os.environ.get("BUFFERING_CHUNK_LENGTH_SECONDS")
         if not self.chunk_length_seconds:
@@ -79,7 +80,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         if not self.error_if_not_realtime:
             self.error_if_not_realtime = kwargs.get("error_if_not_realtime", False)
 
-    def process_audio(self, websocket, vad_pipeline, asr_pipeline):
+    def process_audio(self, websocket, vad_pipeline):
         """
         Process audio chunks by checking their length and scheduling
         asynchronous processing.
@@ -106,16 +107,14 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         self.client.buffer.clear()
 
         # Schedule the processing in a separate task
-        asyncio.create_task(
-            self.process_audio_async(websocket, vad_pipeline, asr_pipeline)
-        )
+        asyncio.create_task(self.process_audio_async(websocket, vad_pipeline))
 
     def get_last_segment_should_end_before(self):
         return len(self.client.scratch_buffer) / (
             self.client.sampling_rate * self.client.samples_width
         )
 
-    async def process_audio_async(self, websocket, vad_pipeline, asr_pipeline):
+    async def process_audio_async(self, websocket, vad_pipeline):
         """
         Asynchronously process audio for activity detection and transcription.
 
@@ -150,7 +149,9 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         start = time.time()
         copy = self.client.scratch_buffer.copy()
         self.client.scratch_buffer.clear()
-        transcription = await asr_pipeline.transcribe(copy)
+
+        transcription = await self.transcriber.transcribe(copy)
+        print(f"transcription: {transcription}")
         if transcription["text"] != "":
             end = time.time()
             transcription["processing_time"] = end - start
