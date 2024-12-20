@@ -1,10 +1,7 @@
-import os
 import asyncio
 
 from faster_whisper import WhisperModel
-
-from src.audio_utils import save_audio_to_file
-from src.client import Client
+from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 
 from .asr_interface import ASRInterface
@@ -113,28 +110,40 @@ language_codes = {
 }
 
 
+def transcribe_worker(buffer, model_size):
+    """Standalone function that runs in a separate process"""
+    from faster_whisper import WhisperModel
+
+    model = WhisperModel(
+        model_size, device="cuda", compute_type="float16", num_workers=1
+    )
+
+    ndarray = np.frombuffer(buffer, dtype=np.int16)
+    segments, info = model.transcribe(ndarray)
+    segments = list(segments)
+
+    return {
+        "text": " ".join([s.text.strip() for s in segments]),
+    }
+
+
 class FasterWhisperASR(ASRInterface):
     def __init__(self, **kwargs):
-        model_size = kwargs.get("model_size", "large-v3")
-        # Run on GPU with FP16
-        self.asr_pipeline = WhisperModel(
-            model_size,
-            device="cuda",
-            compute_type="float16",
-            num_workers=1,
-        )
+        self.model_size = kwargs.get("model_size", "large-v3")
+        self.process_pool = ProcessPoolExecutor(max_workers=2)
 
     async def transcribe(self, buffer):
-        ndarray = np.frombuffer(buffer, dtype=np.int16)
-        segments, info = await asyncio.to_thread(
-            self.asr_pipeline.transcribe,
-            ndarray
-        )
-        flattened_words = [
-            segment.text for segment in list(segments)
-        ]
+        loop = asyncio.get_running_loop()
 
-        to_return = {
-            "text": " ".join(flattened_words),
-        }
-        return to_return
+        try:
+            # Pass only serializable objects to the process
+            result = await loop.run_in_executor(
+                self.process_pool, transcribe_worker, buffer, self.model_size
+            )
+            return result
+        except Exception as e:
+            print(f"Transcription error: {e}")
+            return {"text": ""}
+
+    async def cleanup(self):
+        self.process_pool.shutdown(wait=True)

@@ -6,16 +6,15 @@ from typing import Set
 
 from .buffering_strategy_interface import BufferingStrategyInterface
 
-class Command:
 
+class Command:
     """A command, an asynchronous task, imagine an asynchronous action."""
 
     async def run(self):
         """To be defined in sub-classes."""
         pass
 
-    async def start(self, condition: asyncio.Condition,
-            commands: Set['Command']):
+    async def start(self, condition: asyncio.Condition, commands: Set["Command"]):
         """
         Start the task, calling run asynchronously.
 
@@ -30,6 +29,7 @@ class Command:
         # as the number of running commands might have reached 0.
         async with condition:
             condition.notify()
+
 
 class SilenceAtEndOfChunk(BufferingStrategyInterface):
     """
@@ -60,16 +60,12 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         """
         self.client = client
 
-        self.chunk_length_seconds = os.environ.get(
-            "BUFFERING_CHUNK_LENGTH_SECONDS"
-        )
+        self.chunk_length_seconds = os.environ.get("BUFFERING_CHUNK_LENGTH_SECONDS")
         if not self.chunk_length_seconds:
             self.chunk_length_seconds = kwargs.get("chunk_length_seconds")
         self.chunk_length_seconds = float(self.chunk_length_seconds)
 
-        self.chunk_offset_seconds = os.environ.get(
-            "BUFFERING_CHUNK_OFFSET_SECONDS"
-        )
+        self.chunk_offset_seconds = os.environ.get("BUFFERING_CHUNK_OFFSET_SECONDS")
         if not self.chunk_offset_seconds:
             self.chunk_offset_seconds = kwargs.get("chunk_offset_seconds")
         self.chunk_offset_seconds = float(self.chunk_offset_seconds)
@@ -81,9 +77,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
 
         self.error_if_not_realtime = os.environ.get("ERROR_IF_NOT_REALTIME")
         if not self.error_if_not_realtime:
-            self.error_if_not_realtime = kwargs.get(
-                "error_if_not_realtime", False
-            )
+            self.error_if_not_realtime = kwargs.get("error_if_not_realtime", False)
 
     def process_audio(self, websocket, vad_pipeline, asr_pipeline):
         """
@@ -103,7 +97,9 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             return
 
         if len(self.client.scratch_buffer) > 0:
-            print(f"Still processing {len(self.client.scratch_buffer)}, now waiting for {len(self.client.buffer)}")
+            print(
+                f"Still processing {len(self.client.scratch_buffer)}, now waiting for {len(self.client.buffer)}"
+            )
             return
 
         self.client.scratch_buffer += self.client.buffer
@@ -115,7 +111,9 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         )
 
     def get_last_segment_should_end_before(self):
-        return len(self.client.scratch_buffer) / (self.client.sampling_rate * self.client.samples_width)
+        return len(self.client.scratch_buffer) / (
+            self.client.sampling_rate * self.client.samples_width
+        )
 
     async def process_audio_async(self, websocket, vad_pipeline, asr_pipeline):
         """
@@ -139,21 +137,23 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             self.client.scratch_buffer.clear()
             return
 
-        while len(vad_results) == 0 or vad_results[-1]["end"] > last_segment_should_end_before:
+        while (
+            len(vad_results) == 0
+            or vad_results[-1]["end"] > last_segment_should_end_before
+        ):
             await asyncio.sleep(1)
             self.client.scratch_buffer += self.client.buffer
             self.client.buffer.clear()
             last_segment_should_end_before = self.get_last_segment_should_end_before()
-            vad_start = time.time()
             vad_results = await vad_pipeline.detect_activity(self.client.scratch_buffer)
-            vad_end = time.time()
 
-        # transcription = await asr_pipeline.transcribe(self.client.scratch_buffer)
-        transcription = { "text": "" }
+        transcription = await asr_pipeline.transcribe(self.client.scratch_buffer)
         self.client.scratch_buffer.clear()
         if transcription["text"] != "":
             end = time.time()
             transcription["processing_time"] = end - start
             json_transcription = json.dumps(transcription)
-            print(f"transcribed {len(transcription["text"].split(" "))} words in {transcription["processing_time"]} seconds")
+            print(
+                f"transcribed {len(transcription["text"].split(" "))} words in {transcription["processing_time"]} seconds"
+            )
             await websocket.send(json_transcription)
