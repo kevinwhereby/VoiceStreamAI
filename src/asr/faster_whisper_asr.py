@@ -148,7 +148,7 @@ class FasterWhisperASR(ASRInterface):
         self.model_size = kwargs.get("model_size", "large-v3")
         # Initialize pool with workers that already have the model loaded
         self.process_pool = ProcessPoolExecutor(
-            max_workers=4, initializer=init_worker, initargs=(self.model_size,)
+            max_workers=2, initializer=init_worker, initargs=(self.model_size,)
         )
 
     async def transcribe(self, buffer):
