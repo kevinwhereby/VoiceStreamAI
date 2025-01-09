@@ -153,7 +153,6 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
         self.client.scratch_buffer.clear()
 
         transcription = await self.transcriber.transcribe(copy)
-        print(f"transcription: {transcription}")
         if transcription["text"] != "":
             end = time.time()
             transcription["processing_time"] = end - start
