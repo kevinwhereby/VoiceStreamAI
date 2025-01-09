@@ -53,7 +53,7 @@ class PyannoteVAD(VADInterface):
         )
         self.model = Model.from_pretrained(model_name, use_auth_token=auth_token)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        pipeline = model.to(device)
+        pipeline = self.model.to(device)
         self.vad_pipeline = VoiceActivityDetection(segmentation=self.model)
         self.vad_pipeline.instantiate(pyannote_args)
 
