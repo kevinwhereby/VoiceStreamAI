@@ -44,7 +44,7 @@ class Client:
             self.config["processing_strategy"],
             self,
             Transcriber(
-                "http://ec2-54-194-146-152.eu-west-1.compute.amazonaws.com:8080/v1/audio/transcriptions"
+                "http://ip-172-31-22-183.eu-west-1.compute.internal:8080/v1/audio/transcriptions"
             ),
             **self.config["processing_args"],
         )
@@ -55,7 +55,7 @@ class Client:
             self.config["processing_strategy"],
             self,
             Transcriber(
-                "http://ec2-54-194-146-152.eu-west-1.compute.amazonaws.com:8080/v1/audio/transcriptions"
+                "http://ip-172-31-22-183.eu-west-1.compute.internal:8080/v1/audio/transcriptions"
             ),
             **self.config["processing_args"],
         )

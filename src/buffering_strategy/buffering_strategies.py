@@ -159,6 +159,6 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             transcription["processing_time"] = end - start
             json_transcription = json.dumps(transcription)
             print(
-                f"transcribed {len(transcription["text"].split(" "))} words in {transcription["processing_time"]} seconds"
+                f"transcribed {len(transcription['text'].split(' '))} words in {transcription['processing_time']} seconds"
             )
             await websocket.send(json_transcription)
