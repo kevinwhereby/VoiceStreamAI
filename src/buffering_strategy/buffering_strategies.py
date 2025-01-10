@@ -138,7 +138,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             self.client.scratch_buffer.clear()
             return
 
-        print(f"Vad results: {vad_results}")
+        talk_start = time.time()
         while (
             len(vad_results) == 0
             or vad_results[-1]["end"] > last_segment_should_end_before
@@ -149,6 +149,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             last_segment_should_end_before = self.get_last_segment_should_end_before()
             vad_results = await vad_pipeline.detect_activity(self.client.scratch_buffer)
 
+        talk_end = time.time()
         start = time.time()
         copy = self.client.scratch_buffer.copy()
         self.client.scratch_buffer.clear()
@@ -159,6 +160,6 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             transcription["processing_time"] = end - start
             json_transcription = json.dumps(transcription)
             print(
-                f"transcribed {len(transcription['text'].split(' '))} words in {transcription['processing_time']} seconds"
+                f"{len(transcription['text'].split(' '))} words, {talk_end - talk_start} seconds, in {transcription['processing_time']} seconds"
             )
             await websocket.send(json_transcription)
