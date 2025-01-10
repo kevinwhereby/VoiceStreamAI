@@ -138,6 +138,7 @@ class SilenceAtEndOfChunk(BufferingStrategyInterface):
             self.client.scratch_buffer.clear()
             return
 
+        print(f"Vad results: {vad_results}")
         while (
             len(vad_results) == 0
             or vad_results[-1]["end"] > last_segment_should_end_before
