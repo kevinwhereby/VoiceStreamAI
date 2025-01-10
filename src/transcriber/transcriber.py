@@ -11,8 +11,6 @@ class Transcriber:
         form.add_field(
             "file", io.BytesIO(bytes), filename="audio.raw", content_type="audio/x-raw"
         )
-        form.add_field("language", "en")
-        form.add_field("model", "Systran/faster-whisper-large-v3")
         async with aiohttp.ClientSession() as session:
             async with session.post(self.url, data=form) as response:
                 response.raise_for_status()
