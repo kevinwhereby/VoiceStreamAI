@@ -43,7 +43,7 @@ class Client:
         self.buffering_strategy = BufferingStrategyFactory.create_buffering_strategy(
             self.config["processing_strategy"],
             self,
-            Transcriber("http://localhost:8080"),
+            Transcriber("http://localhost:8080/v1/audio/transcriptions"),
             **self.config["processing_args"],
         )
 
@@ -52,7 +52,7 @@ class Client:
         self.buffering_strategy = BufferingStrategyFactory.create_buffering_strategy(
             self.config["processing_strategy"],
             self,
-            Transcriber("http://localhost:8080"),
+            Transcriber("http://localhost:8080/v1/audio/transcriptions"),
             **self.config["processing_args"],
         )
 
